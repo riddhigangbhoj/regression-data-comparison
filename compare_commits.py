@@ -7,34 +7,27 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Configuration (adjust these paths and settings as needed)
-n = 3  # Number of commits to process (changed to 10 as requested)
-tardis_repo_path = "/home/riddhi/workspace/tardis-main/tardis"  # Path to your main repository
-regression_data_repo_path = "/home/riddhi/workspace/tardis-main/tardis-regression-data"  # Path to regression data repo
-branch = "master"  # Branch to work on
-target_file = "tardis/spectrum/tests/test_spectrum_solver/test_spectrum_solver/TestSpectrumSolver.h5"  # Relative path to the specific HDF5 file
+n = 3  
+tardis_repo_path = "/home/riddhi/workspace/tardis-main/tardis"  
+regression_data_repo_path = "/home/riddhi/workspace/tardis-main/tardis-regression-data"  
+branch = "master"  
+target_file = "tardis/spectrum/tests/test_spectrum_solver/test_spectrum_solver/TestSpectrumSolver.h5" 
 
-# Compute absolute path to the target file
 target_file_path = os.path.join(regression_data_repo_path, target_file)
 
-# Initialize Git repositories
 tardis_repo = Repo(tardis_repo_path)
 regression_repo = Repo(regression_data_repo_path)
 
-# Store the original HEAD of the regression data repo for reset
 original_head = regression_repo.head.commit.hexsha
 print(f"Original HEAD of regression data repo: {original_head}")
 
-# Get the last n commits from the tardis repo (oldest to newest among the n)
 commits = list(tardis_repo.iter_commits(branch, max_count=n))
-commits.reverse()  # Process from oldest to newest
+commits.reverse()  
 
-# Lists to store commit info and data
-processed_commits = []  # Tardis commit hashes
-regression_commits = []  # Regression commit (hash, message) tuples
-commit_data = []  # HDF5 data for each commit
+processed_commits = []  
+regression_commits = []  
+commit_data = []  
 
-# Define spectrum keys to match the reference code
 spectrum_keys = [
     'spectrum_integrated',
     'spectrum_real_packets',
@@ -42,37 +35,25 @@ spectrum_keys = [
     'spectrum_virtual_packets'
 ]
 
-# Define 10 distinct colors for Matplotlib and Plotly
 matplotlib_colors = [
     'blue', 'red', 'green', 'purple', 'orange',
     'cyan', 'magenta', 'lime', 'brown', 'pink'
 ]
 
 plotly_colors = [
-    '#1f77b4',  # Blue
-    '#ff7f0e',  # Orange
-    '#2ca02c',  # Green
-    '#d62728',  # Red
-    '#9467bd',  # Purple
-    '#8c564b',  # Brown
-    '#e377c2',  # Pink
-    '#7f7f7f',  # Gray
-    '#bcbd22',  # Lime
-    '#17becf'   # Cyan
+    '#1f77b4',  
+    '#ff7f0e',
+    '#2ca02c',
+    '#d62728',
+    '#9467bd',
+    '#8c564b',
+    '#e377c2',
+    '#7f7f7f',
+    '#bcbd22',
+    '#17becf'  
 ]
 
-# Function to load specific spectrum datasets from HDF5 file
 def load_h5_data(file_path, spectrum_keys):
-    """
-    Loads 'wavelength' and 'luminosity' datasets for specific spectrum keys from the HDF5 file.
-
-    Parameters:
-    - file_path: Absolute path to the HDF5 file.
-    - spectrum_keys: List of spectrum keys to load (e.g., 'spectrum_integrated').
-
-    Returns:
-    - A dictionary with spectrum keys mapping to {'wavelength': array, 'luminosity': array}.
-    """
     h5_data = {}
     print(f"\nInspecting HDF5 file: {file_path}")
     try:
@@ -114,13 +95,8 @@ def load_h5_data(file_path, spectrum_keys):
         print(f"Error reading {file_path}: {e}")
     return h5_data
 
-# Function to plot all commits using Matplotlib with distinct colors
 def plot_all_commits_matplotlib(all_data, spectrum_keys, output_dir):
-    """
-    Plots luminosity for all commits on the same plot for each spectrum key using Matplotlib.
-    Uses 10 distinct colors for the 10 commits.
-    Saves the figure as a PDF.
-    """
+
     fig, axes = plt.subplots(2, 2, figsize=(20, 15), sharex=True, sharey=True)
     axes = axes.flatten()
 
@@ -149,13 +125,8 @@ def plot_all_commits_matplotlib(all_data, spectrum_keys, output_dir):
         print(f"Failed to save {file_name}: {e}")
     plt.close()
 
-# Function to plot all commits using Plotly with distinct colors
 def plot_all_commits_plotly(all_data, spectrum_keys, output_dir):
-    """
-    Plots luminosity for all commits on the same plot for each spectrum key using Plotly.
-    Uses 10 distinct colors for the 10 commits.
-    Saves the figure as an HTML file.
-    """
+
     fig = make_subplots(rows=2, cols=2, subplot_titles=[f'Luminosity for {key}' for key in spectrum_keys])
 
     for idx, key in enumerate(spectrum_keys):
@@ -165,7 +136,7 @@ def plot_all_commits_plotly(all_data, spectrum_keys, output_dir):
             if key in data:
                 wavelength = data[key]['wavelength']
                 luminosity = data[key]['luminosity']
-                # Use the color corresponding to the commit index
+               
                 color = plotly_colors[(commit_idx - 1) % len(plotly_colors)]
                 fig.add_trace(
                     go.Scatter(
@@ -174,7 +145,7 @@ def plot_all_commits_plotly(all_data, spectrum_keys, output_dir):
                         mode='lines',
                         name=f'Commit {commit_idx}',
                         legendgroup=f'Commit {commit_idx}',
-                        showlegend=(idx == 0),  # Show legend only for the first subplot
+                        showlegend=(idx == 0), 
                         line=dict(color=color)
                     ),
                     row=row,
@@ -195,7 +166,6 @@ def plot_all_commits_plotly(all_data, spectrum_keys, output_dir):
     except Exception as e:
         print(f"Failed to save {file_name}: {e}")
 
-# Process each commit
 for i, commit in enumerate(commits, 1):
     print(f"Processing commit {i}/{n}: {commit.hexsha}")
     
@@ -237,7 +207,6 @@ for i, commit in enumerate(commits, 1):
     current_data = load_h5_data(target_file_path, spectrum_keys)
     commit_data.append(current_data)
 
-# Print commit information
 print("\nProcessed Tardis Commits:")
 for hash in processed_commits:
     print(hash)
@@ -246,19 +215,14 @@ print("\nRegression Data Commits:")
 for hash, msg in regression_commits:
     print(f"{hash}: {msg}")
 
-# Plot all commits in one graph
 output_dir = os.path.join(tardis_repo_path, "comparison_plots")
 os.makedirs(output_dir, exist_ok=True)
 
-# Matplotlib plot for all commits
 plot_all_commits_matplotlib(commit_data, spectrum_keys, output_dir)
 
-# Plotly plot for all commits
 plot_all_commits_plotly(commit_data, spectrum_keys, output_dir)
 
-# Reset the regression data repo to its original state
 print(f"\nResetting regression data repo to {original_head}")
 regression_repo.git.reset('--hard', original_head)
 
-# Return tardis repo to the latest state (optional)
 tardis_repo.git.checkout(branch)

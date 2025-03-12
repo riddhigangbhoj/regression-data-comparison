@@ -7,34 +7,26 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Configuration (adjust these paths and settings as needed)
-n = 3  # Number of commits to process (must be >= 2)
-tardis_repo_path = "/home/riddhi/workspace/tardis-main/tardis"  # Path to your main repository
-regression_data_repo_path = "/home/riddhi/workspace/tardis-main/tardis-regression-data"  # Path to regression data repo
-branch = "master"  # Branch to work on
-target_file = "tardis/spectrum/tests/test_spectrum_solver/test_spectrum_solver/TestSpectrumSolver.h5"  # Relative path to the specific HDF5 file
-
-# Compute absolute path to the target file
+n = 3  
+tardis_repo_path = "/home/riddhi/workspace/tardis-main/tardis" 
+regression_data_repo_path = "/home/riddhi/workspace/tardis-main/tardis-regression-data"  
+branch = "master"  
+target_file = "tardis/spectrum/tests/test_spectrum_solver/test_spectrum_solver/TestSpectrumSolver.h5"  
 target_file_path = os.path.join(regression_data_repo_path, target_file)
 
-# Initialize Git repositories
 tardis_repo = Repo(tardis_repo_path)
 regression_repo = Repo(regression_data_repo_path)
 
-# Store the original HEAD of the regression data repo for reset
 original_head = regression_repo.head.commit.hexsha
 print(f"Original HEAD of regression data repo: {original_head}")
 
-# Get the last n commits from the tardis repo (oldest to newest among the n)
 commits = list(tardis_repo.iter_commits(branch, max_count=n))
-commits.reverse()  # Process from oldest to newest
+commits.reverse()  
 
-# Lists to store commit info and data
-processed_commits = []  # Tardis commit hashes
-regression_commits = []  # Regression commit (hash, message) tuples
-commit_data = []  # HDF5 data for each commit
+processed_commits = []  
+regression_commits = []  
+commit_data = []  
 
-# Define spectrum keys to match the reference code
 spectrum_keys = [
     'spectrum_integrated',
     'spectrum_real_packets',
@@ -42,18 +34,7 @@ spectrum_keys = [
     'spectrum_virtual_packets'
 ]
 
-# Function to load specific spectrum datasets from HDF5 file
 def load_h5_data(file_path, spectrum_keys):
-    """
-    Loads 'wavelength' and 'luminosity' datasets for specific spectrum keys from the HDF5 file.
-
-    Parameters:
-    - file_path: Absolute path to the HDF5 file.
-    - spectrum_keys: List of spectrum keys to load (e.g., 'spectrum_integrated').
-
-    Returns:
-    - A dictionary with spectrum keys mapping to {'wavelength': array, 'luminosity': array}.
-    """
     h5_data = {}
     print(f"\nInspecting HDF5 file: {file_path}")
     try:
@@ -66,7 +47,6 @@ def load_h5_data(file_path, spectrum_keys):
                 print("Error: 'spectrum_solver' group not found under 'simulation'.")
                 return h5_data
             for key in spectrum_keys:
-                # Corrected path to match the actual structure
                 group_path = f'simulation/spectrum_solver/{key}'
                 print(f"Checking {group_path}")
                 if group_path in f:
@@ -74,7 +54,6 @@ def load_h5_data(file_path, spectrum_keys):
                     if not isinstance(group, h5py.Group):
                         print(f"Warning: {group_path} is not a group, skipping.")
                         continue
-                    # Access the 'values' dataset inside 'wavelength' and 'luminosity' groups
                     wavelength_path = f'{group_path}/wavelength/values'
                     luminosity_path = f'{group_path}/luminosity/values'
                     print(f"  {wavelength_path}: {'exists' if wavelength_path in f else 'missing'}")
@@ -97,12 +76,7 @@ def load_h5_data(file_path, spectrum_keys):
         print(f"Error reading {file_path}: {e}")
     return h5_data
 
-# Function to plot spectrum comparison using Matplotlib
 def plot_spectrum_comparison_matplotlib(data1, data2, spectrum_keys, commit_i, commit_j, output_dir):
-    """
-    Plots luminosity and fractional residuals using Matplotlib for each spectrum key between two commits.
-    """
-    # Check if there's any data to plot
     has_data = any(key in data1 and key in data2 for key in spectrum_keys)
     if not has_data:
         print(f"No data to plot for commits {commit_i} and {commit_j}.")
@@ -121,7 +95,6 @@ def plot_spectrum_comparison_matplotlib(data1, data2, spectrum_keys, commit_i, c
         ax_luminosity = fig.add_subplot(gs[row, col])
         ax_residuals = fig.add_subplot(gs[row + 1, col], sharex=ax_luminosity)
         
-        # Plot luminosity
         for data, label, linestyle in [(data1, f'Commit {commit_i}', '-'), (data2, f'Commit {commit_j}', '--')]:
             if key in data:
                 wavelength = data[key]['wavelength']
@@ -133,7 +106,6 @@ def plot_spectrum_comparison_matplotlib(data1, data2, spectrum_keys, commit_i, c
         ax_luminosity.legend()
         ax_luminosity.grid(True)
         
-        # Plot fractional residuals
         if key in data1 and key in data2:
             wavelength = data1[key]['wavelength']
             luminosity1 = data1[key]['luminosity']
@@ -165,12 +137,7 @@ def plot_spectrum_comparison_matplotlib(data1, data2, spectrum_keys, commit_i, c
         print(f"Failed to save {file_name}: {e}")
     plt.close()
 
-# Function to plot spectrum comparison using Plotly
 def plot_spectrum_comparison_plotly(data1, data2, spectrum_keys, commit_i, commit_j, output_dir):
-    """
-    Plots luminosity and fractional residuals using Plotly for each spectrum key between two commits.
-    """
-    # Check if there's any data to plot
     has_data = any(key in data1 and key in data2 for key in spectrum_keys)
     if not has_data:
         print(f"No data to plot for commits {commit_i} and {commit_j}.")
@@ -191,13 +158,12 @@ def plot_spectrum_comparison_plotly(data1, data2, spectrum_keys, commit_i, commi
     )
 
     for idx, key in enumerate(spectrum_keys):
-        if key not in data1 or key not in data2:  # Fixed the condition
+        if key not in data1 or key not in data2: 
             continue
 
         plot_col = idx % 2 + 1
         plot_row = (idx // 2) * 2 + 1
 
-        # Plot luminosity
         for data, name, line_style in [(data1, f'Commit {commit_i}', 'solid'), (data2, f'Commit {commit_j}', 'dash')]:
             if key in data:
                 wavelength = data[key]['wavelength']
@@ -214,7 +180,6 @@ def plot_spectrum_comparison_plotly(data1, data2, spectrum_keys, commit_i, commi
                     col=plot_col
                 )
 
-        # Plot residuals
         if key in data1 and key in data2:
             wavelength = data1[key]['wavelength']
             luminosity1 = data1[key]['luminosity']
@@ -256,18 +221,14 @@ def plot_spectrum_comparison_plotly(data1, data2, spectrum_keys, commit_i, commi
     except Exception as e:
         print(f"Failed to save {file_name}: {e}")
 
-# Process each commit
 for i, commit in enumerate(commits, 1):
     print(f"Processing commit {i}/{n}: {commit.hexsha}")
-    
-    # Checkout the commit in the tardis repo
+ 
     tardis_repo.git.checkout(commit.hexsha)
-    
-    # Ensure a clean state
+
     tardis_repo.git.reset('--hard')
     tardis_repo.git.clean('-fd')
-    
-    # Run pytest to generate regression data
+
     cmd = [
         "python", "-m", "pytest",
         "tardis/spectrum/tests/test_spectrum_solver.py",
@@ -289,25 +250,20 @@ for i, commit in enumerate(commits, 1):
         print("Pytest stderr:")
         print(e.stderr)
         raise
-    
-    # Check if the HDF5 file exists
+
     if not os.path.exists(target_file_path):
         print(f"Error: HDF5 file {target_file_path} was not generated.")
         continue
-    
-    # Stage and commit changes in the regression repo
+
     regression_repo.git.add(A=True)
     regression_commit = regression_repo.index.commit(f"Regression data for tardis commit {i}")
     regression_commits.append((regression_commit.hexsha, regression_commit.message))
-    
-    # Store the tardis commit hash
+
     processed_commits.append(commit.hexsha)
-    
-    # Load datasets from the target file only
+
     current_data = load_h5_data(target_file_path, spectrum_keys)
     commit_data.append(current_data)
 
-# Print commit information
 print("\nProcessed Tardis Commits:")
 for hash in processed_commits:
     print(hash)
@@ -316,7 +272,6 @@ print("\nRegression Data Commits:")
 for hash, msg in regression_commits:
     print(f"{hash}: {msg}")
 
-# Compare spectrum data between consecutive commits
 output_dir = os.path.join(tardis_repo_path, "comparison_plots")
 os.makedirs(output_dir, exist_ok=True)
 
@@ -326,9 +281,7 @@ for k in range(n - 1):
     plot_spectrum_comparison_matplotlib(data1, data2, spectrum_keys, k + 1, k + 2, output_dir)
     plot_spectrum_comparison_plotly(data1, data2, spectrum_keys, k + 1, k + 2, output_dir)
 
-# Reset the regression data repo to its original state
 print(f"\nResetting regression data repo to {original_head}")
 regression_repo.git.reset('--hard', original_head)
 
-# Return tardis repo to the latest state (optional)
 tardis_repo.git.checkout(branch)
