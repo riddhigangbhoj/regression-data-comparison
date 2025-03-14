@@ -4,7 +4,7 @@ import subprocess
 import os
 from git import Repo
 
-def process_commits(tardis_repo_path, regression_data_repo_path, branch, target_file, n=3):
+def process_commits(tardis_repo_path, regression_data_repo_path, branch, target_file, commits_input=None, n=3):
     """Process commits from tardis repo, run tests, and commit regression data."""
     target_file_path = os.path.join(regression_data_repo_path, target_file)
     tardis_repo = Repo(tardis_repo_path)
@@ -13,8 +13,30 @@ def process_commits(tardis_repo_path, regression_data_repo_path, branch, target_
     original_head = regression_repo.head.commit.hexsha
     print(f"Original HEAD of regression data repo: {original_head}")
 
-    commits = list(tardis_repo.iter_commits(branch, max_count=n))
-    commits.reverse()
+    if commits_input:
+        # Handle both single commit hash and list of commit hashes
+        if isinstance(commits_input, str):
+            commits_input = [commits_input]
+        elif isinstance(commits_input, int):
+            n = commits_input  # treat as n if it's an integer
+            commits_input = None
+            
+        # Process specific commits if commits_input is a list
+        if commits_input:
+            commits = []
+            for commit_hash in commits_input:
+                try:
+                    commit = tardis_repo.commit(commit_hash)
+                    commits.append(commit)
+                except Exception as e:
+                    print(f"Error finding commit {commit_hash}: {e}")
+                    continue
+        else:
+            commits = list(tardis_repo.iter_commits(branch, max_count=n))
+            commits.reverse()
+    else:
+        commits = list(tardis_repo.iter_commits(branch, max_count=n))
+        commits.reverse()
 
     processed_commits = []
     regression_commits = []
@@ -34,7 +56,11 @@ def process_commits(tardis_repo_path, regression_data_repo_path, branch, target_
         ]
         print(f"Running pytest command: {' '.join(cmd)}")
         try:
-            result = subprocess.run(cmd, check=True, cwd=tardis_repo_path, capture_output=True, text=True)
+            current_dir = os.getcwd()  # Save current directory
+            os.chdir(tardis_repo_path)  # Change to tardis directory
+            print(f"Current directory: {os.getcwd()}")
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            os.chdir(current_dir)  # Change back to original directory
             print("Pytest stdout:")
             print(result.stdout)
             print("Pytest stderr:")

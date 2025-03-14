@@ -16,7 +16,8 @@ def main():
     parser.add_argument("--n", type=int, default=3, help="Number of commits to process (default: 3).")
     parser.add_argument("--target-file", default="tardis/spectrum/tests/test_spectrum_solver/test_spectrum_solver/TestSpectrumSolver.h5", help="Relative path to the target HDF5 file.")
     parser.add_argument("--output-dir", help="Directory to save plots (default: comparison_plots inside tardis_repo).")
-
+    parser.add_argument("--commits", nargs="+", help="Specific commits to analyze")
+    
     args = parser.parse_args()
 
     tardis_repo_path = args.tardis_repo
@@ -26,9 +27,22 @@ def main():
     target_file = args.target_file
     output_dir = args.output_dir if args.output_dir else os.path.join(tardis_repo_path, "comparison_plots")
 
-    processed_commits, regression_commits, original_head, target_file_path = process_commits(
-        tardis_repo_path, regression_data_repo_path, branch, target_file, n
-    )
+    if args.commits:
+        processed_commits, regression_commits, original_head, target_file_path = process_commits(
+            tardis_repo_path,
+            regression_data_repo_path,
+            branch,
+            target_file,
+            commits_input=args.commits
+        )
+    else:
+        processed_commits, regression_commits, original_head, target_file_path = process_commits(
+            tardis_repo_path,
+            regression_data_repo_path,
+            branch,
+            target_file,
+            n
+        )
 
     commit_data = []
     regression_repo = Repo(regression_data_repo_path)
